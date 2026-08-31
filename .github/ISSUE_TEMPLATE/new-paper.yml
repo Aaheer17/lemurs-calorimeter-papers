@@ -1,0 +1,49 @@
+name: New paper
+description: Suggest a paper for the list
+title: "[paper] "
+labels: [triage]
+body:
+  - type: input
+    id: arxiv
+    attributes:
+      label: arXiv ID
+      placeholder: "2509.05108"
+    validations:
+      required: true
+  - type: dropdown
+    id: uses_lemurs
+    attributes:
+      label: Does it train on LEMURS?
+      description: >
+        Citing LEMURS in related work is not the same as training on it.
+        Pick "unverified" if you haven't checked — that's a useful answer.
+      options: ["yes", "no", "unverified"]
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Proposed tier
+      options:
+        - "0 — the dataset"
+        - "1 — trains on LEMURS"
+        - "2 — cross-geometry transfer, not on LEMURS"
+        - "3 — backbone / method / benchmark context"
+        - "unsure"
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: What does it do?
+      description: >
+        Two or three factual sentences. What it pre-trains on, what it targets,
+        what it reports. Please paraphrase rather than pasting the abstract.
+    validations:
+      required: true
+  - type: input
+    id: found_via
+    attributes:
+      label: How did you find it?
+      description: Helps show which watcher missed it.
+      placeholder: "INSPIRE citation of 2509.05108 / arXiv listing / cited by X"

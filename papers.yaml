@@ -1,0 +1,296 @@
+# SPDX-License-Identifier: CC-BY-4.0
+#
+# CANONICAL SOURCE. Edit this file only.
+# README.md and papers.bib are generated from it by scripts/build.py.
+#
+# Fields:
+#   key         short citation handle used in this repo
+#   arxiv       arXiv identifier (no version suffix)
+#   inspire     INSPIRE recid, or null if the paper has no INSPIRE record
+#   tier        0 dataset | 1 trains on LEMURS
+#               | 2 transfer/adaptation for simulation surrogates, not LEMURS
+#               | 3 direct antecedent of a tier 1-2 paper | null = untriaged
+#   axis        tier 2 only: what is being transferred across.
+#               geometry | material+species | fidelity
+#               Different axes are NOT directly comparable -- a 44% Wasserstein
+#               gain across geometries and a 2x data reduction across fidelity
+#               domains measure different things. Record the axis so the table
+#               cannot imply a comparison that isn't there.
+#
+#               Inclusion test: would this entry be pointless if LEMURS did not
+#               exist? Tier 3 means a specific tier 1-2 paper builds on it or
+#               benchmarks against it -- name that paper in the note. General
+#               fast-simulation background goes in `background:` below, not
+#               here. Without this test tier 3 becomes a junk drawer.
+#   uses_lemurs true | false | unverified
+#   pretrain    what the model is pre-trained on
+#   target      what it is fine-tuned or evaluated on
+#   repr        fixed-grid | point-cloud | n/a
+#   code        available | none | unverified  -- is an artifact released?
+#               `unverified` mirrors uses_lemurs: nobody has checked yet.
+#               `none` is a positive claim -- you looked and found nothing.
+#   resources   list of {url, kind}; kind = code | data | model | page
+#               Record every URL the paper points at, whatever the domain.
+#               Leave the list empty when code is `available` but you have not
+#               yet found the link -- that gap is itself worth seeing.
+#   note        factual summary; keep to observable claims
+
+papers:
+
+  # ---- Tier 0 — the dataset ------------------------------------------------
+
+  - key: lemurs
+    arxiv: "2509.05108"
+    inspire: null
+    tier: 0
+    uses_lemurs: true
+    repr: fixed-grid
+    geometries: [Par04SiW, Par04SciPb, ODD, FCCeeCLD, FCCeeALLEGRO]
+    code: available
+    resources: []
+    note: >
+      Anchor dataset. 5M photon-induced EM showers evenly split across five
+      detectors, on a cylindrical Universal Grid Representation independent of
+      readout structure. More statistics, wider incident angles and multiple
+      geometries relative to CaloChallenge dataset 2. HDF5. Used to build
+      CaloDiT-2, which ships in Geant4 11.4.beta.
+
+  # ---- Tier 1 — trains on LEMURS -------------------------------------------
+
+  - key: calodit2
+    arxiv: "2509.07700"
+    inspire: null
+    tier: 1
+    uses_lemurs: true
+    pretrain: LEMURS (4 geometries)
+    target: new detectors; CaloChallenge ds2 benchmark
+    repr: fixed-grid
+    code: available
+    resources: []
+    note: >
+      Diffusion model with transformer blocks. Pre-trains across multiple
+      detectors and adapts to new ones, reporting up to 25x less data and 20x
+      less training time. 900k train / 100k validation showers per detector.
+      Stated as the first published pre-trained model supporting adaptation for
+      shower simulation. Overlapping author list with the LEMURS dataset.
+
+  - key: universal-vit
+    arxiv: "2601.05289"
+    inspire: null
+    tier: 1
+    uses_lemurs: true
+    pretrain: LEMURS
+    target: CaloChallenge ds2, ds3, CaloHadronic
+    repr: fixed-grid
+    venue: "Mach. Learn.: Sci. Technol. 7(3) 035052 (2026)"
+    code: unverified
+    resources: []
+    note: >
+      ViT surrogate pre-trained on LEMURS. At 100k training showers the
+      fine-tuned model beats from-scratch training on CaloChallenge ds2. Gains
+      on high-granularity ds3 are smaller, plateauing near AUC 0.80, which the
+      authors suggest may reflect network expressivity rather than the transfer
+      method.
+
+  - key: multigeom-pretrain
+    arxiv: "2608.18233"
+    inspire: null
+    tier: 1
+    uses_lemurs: true
+    pretrain: SimpleBox (10^4 synthetic box calorimeters) vs LEMURS
+    target: FCCee-ALLEGRO (held out)
+    repr: point-cloud
+    code: unverified
+    resources: []
+    note: >
+      Compares a synthetic pre-training pool against a realistic one. With 10^3
+      target showers, the two priors reduce aggregated sliced Wasserstein
+      distance to Geant4 by 5.2x (synthetic) and 8.0x (realistic) versus
+      from-scratch. Reports that as fine-tuning data grows, the LEMURS-pretrained
+      model moves away from the Geant4 ALLEGRO reference and toward its own
+      pre-training value; the SimpleBox arm moves toward its own pool; the
+      from-scratch arm shows no trend. Builds on the AllShowers backbone.
+      NOTE: sometimes miscited as "CaloART" — it is not CaloArt (see caloart).
+
+  # ---- Tier 2 — transfer & adaptation, not on LEMURS -----------------------
+
+  - key: cross-geometry
+    arxiv: "2512.00187"
+    inspire: null
+    tier: 2
+    axis: geometry
+    uses_lemurs: false
+    pretrain: International Large Detector (ILD)
+    target: CaloChallenge ds3
+    repr: point-cloud
+    code: unverified
+    resources: []
+    note: >
+      Point-cloud transfer learning without re-voxelisation. With 100
+      target-domain samples, reports a 44% improvement on the geometric mean of
+      Wasserstein distance over from-scratch training. Bias-only PEFT stays
+      competitive while updating 17% of parameters. Cites LEMURS only in related
+      work, contrasting itself with CaloDiT-2 on single- vs multi-detector
+      pre-training and point-cloud vs fixed-grid representation. Named in
+      multigeom-pretrain as its closest precursor.
+
+  - key: fastfull-transfer
+    arxiv: "2605.07471"
+    inspire: null
+    tier: 2
+    axis: fidelity
+    uses_lemurs: false
+    pretrain: ATLAS-like Delphes fast simulation
+    target: CMS-like Delphes fast sim; fully simulated ATLAS Open Data
+    repr: n/a
+    code: unverified
+    resources: []
+    note: >
+      Transfer between fast-simulated and fully simulated datasets across three
+      tasks: signal-background classification, quark-gluon tagging, and missing
+      transverse energy reconstruction, using dense, graph and transformer
+      architectures. Pre-trained models beat independently trained baselines
+      throughout and cut required target-domain statistics by roughly a factor
+      of two. Not shower generation and not cross-geometry — the transfer axis is
+      simulation fidelity, so its numbers are not on the same footing as the
+      geometry-axis results elsewhere in this tier.
+
+  # ---- Tier 3 — direct antecedents of tier 1-2 work ------------------------
+
+  - key: allshowers
+    arxiv: "2601.11716"
+    inspire: null
+    tier: 3
+    uses_lemurs: false
+    pretrain: ILD
+    repr: point-cloud
+    code: available
+    resources:
+      - url: https://github.com/FLC-QU-hep/AllShowers
+        kind: code
+    note: >
+      Single generative model covering multiple particle types, replacing
+      per-species networks. Continuous normalizing flow with a Transformer over
+      variable-length point clouds. Reported to exceed prior single-particle-type
+      models on hadronic fidelity. This is the backbone multigeom-pretrain builds
+      on — read first.
+
+  - key: caloart
+    arxiv: "2605.12011"
+    inspire: null
+    tier: 3
+    uses_lemurs: false
+    target: CaloChallenge ds2, ds3
+    repr: fixed-grid
+    code: unverified
+    resources: []
+    note: >
+      DiT-style backbone for direct raw voxel generation, with 3D axial RoPE,
+      RMSNorm, qk-norm and shared conditioning modulation, trained via
+      conditional flow matching with decoupled prediction and loss spaces. On ds2
+      reports best FPD and strongest high-level and ResNet classifier metrics; on
+      the 40500-voxel ds3, x-prediction beats v-prediction on all reported
+      metrics. This is the real CaloArt — single-geometry, not multi-geometry
+      pre-training.
+
+  - key: calotrilogy
+    arxiv: "2606.04165"
+    inspire: null
+    tier: 3
+    uses_lemurs: false
+    repr: fixed-grid
+    code: unverified
+    resources: []
+    note: >
+      One- or few-step generation combining a MeanFlow average-velocity
+      integrator, a conditional-GMM prior learned in shower space rather than
+      from noise, and physics-guided loss terms. Addresses the O(100) function
+      evaluations typical of flow-matching and diffusion surrogates. Cites the
+      full cluster above, so it doubles as a current map of the field.
+
+  - key: calohadronic
+    arxiv: "2506.21720"
+    inspire: null
+    tier: 3
+    uses_lemurs: false
+    pretrain: ILD
+    repr: point-cloud
+    venue: "JINST 21(01) P01042 (2026)"
+    code: unverified
+    resources: []
+    note: >
+      Transformer extension of geometry-independent point-cloud diffusion to
+      hadronic showers, generating across both electromagnetic and hadronic
+      calorimeters. Used as a fine-tuning target in universal-vit.
+
+  - key: moe-peft-foundation
+    arxiv: "2603.28804"
+    inspire: null
+    tier: 2
+    axis: material+species
+    uses_lemurs: false
+    pretrain: ILD Si-W ECAL, photons in tungsten + tantalum (~950k samples each)
+    target: photons in lead; electrons in W/Ta/Pb
+    repr: voxel tokens (30x30x30, next-token)
+    code: available
+    resources:
+      - url: https://github.com/wmdataphys/FM4CAL
+        kind: code
+      - url: https://github.com/FLC-QU-hep/getting_high
+        kind: data
+    note: >
+      Next-token transformer foundation model. Fixed-routing Mixture-of-Experts
+      handles materials; new materials are added by training one expert with the
+      backbone frozen, reaching agreement within uncertainty at 1k fine-tuning
+      samples. New particle species need LoRA (r=128) plus particle-specific
+      vocabulary heads, working well from 50k samples. Because adaptation is
+      strictly additive on a frozen backbone, catastrophic forgetting is
+      prevented by construction. Reports 392x speedup over Geant4 using KV-cache,
+      memory preallocation and CUDA graphs. Datasets are ILD-based, replicating
+      Getting High and OmniJet-alpha_c; the transfer axis is material and
+      particle species, not detector geometry.
+
+  - key: spade
+    arxiv: "2606.11304"
+    inspire: null
+    tier: 3
+    uses_lemurs: false
+    target: Getting High and Getting Square photon datasets (ILD)
+    repr: point-cloud
+    code: unverified
+    resources: []
+    note: >
+      Autoregressive high-granularity shower simulation with split-and-delay
+      embeddings. Trains AllShowers as a baseline on the same photon datasets,
+      and gives an independent description of that architecture: PointCountFM
+      predicts points per layer and fixes each point's z from the layer index,
+      then a CNF-transformer predicts (x, y, E), reducing the generative task to
+      three dimensions.
+
+
+# Context worth having findable, but outside the tiers: work with no traceable
+# link to LEMURS. Rendered as a flat list of links, and included in papers.bib
+# so it is citable, but deliberately given no tier, note or verification state.
+background:
+  - arxiv: "2410.21611"
+    why: Community benchmark most papers here report against.
+  - arxiv: "2607.25060"
+    why: Introduces CFD, a correlation-structure metric alongside FPD/KPD.
+
+# Citation watchers. Consumed by scripts/watch.py (not yet written).
+# Rationale: INSPIRE covers HEP-native citations and serves BibTeX, but only
+# counts citations from records inside INSPIRE, so cs-venue work is missed —
+# lantern is cs.LG/cs.AI with no physics cross-list. arXiv keyword search has no
+# category filter on purpose: "calorimeter" is specific enough that filtering by
+# category costs recall and buys no precision.
+watchers:
+  inspire:
+    anchors: [lemurs, calodit2, universal-vit, multigeom-pretrain]
+    query: "refersto recid:{recid}"
+  arxiv:
+    queries:
+      - 'abs:calorimeter AND abs:shower AND abs:generative'
+      - 'abs:calorimeter AND (abs:"transfer learning" OR abs:"foundation model" OR abs:pre-training)'
+  semantic_scholar:
+    anchors: [lemurs]
+    endpoint: "https://api.semanticscholar.org/graph/v1/paper/arXiv:{arxiv}/citations"
