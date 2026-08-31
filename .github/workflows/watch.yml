@@ -1,0 +1,42 @@
+name: Watch for new papers
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"        # Mondays 09:00 UTC
+  workflow_dispatch:            # and on demand from the Actions tab
+
+permissions:
+  contents: write               # commit the seen ledger
+  issues: write                 # open the triage issue
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - id: watch
+        run: python scripts/watch.py
+
+      - name: Open triage issue
+        if: steps.watch.outputs.new_count
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Paper triage — ${{ steps.watch.outputs.new_count }} new candidate(s)"
+          content-filepath: .watch-report.md
+          labels: triage
+
+      - name: Record what was reported
+        if: steps.watch.outputs.new_count
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .watch-seen.json
+          git commit -m "Record reported candidates" || exit 0
+          git push

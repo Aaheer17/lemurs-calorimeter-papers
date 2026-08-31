@@ -5,3 +5,4 @@ venv/
 .cache/
 .DS_Store
 .ipynb_checkpoints/
+.watch-report.md
